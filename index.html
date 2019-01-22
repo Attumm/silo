@@ -1,0 +1,407 @@
+<html>
+    <head>
+        <!--<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+         production version, optimized for size and speed -->
+        <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+              
+        <title>vue silo</title>
+        <style>
+          body {
+          }
+          .grid {
+            display: grid;
+            /*rid-template-columns: 33% 33% 34%;*/
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: 5% 30% 60% 5%;
+            
+            margin: auto;
+            padding: 8px;
+            height: 100%;
+            width: 100%;
+            position: absolute;
+          }
+          .item {
+            display: inline-block;
+            background-color: rgba(204, 198, 198, 0.795);
+          }
+          .item:nth-child(odd) {
+          }
+          .item:nth-child(even) {
+            background: gray;
+          }
+          .box1 {
+            padding: 10px;
+            border: black;
+            grid-column: 1;
+            grid-row: 1;
+          }
+          .box4 > ul {
+              overflow:hidden;
+              overflow-y:scroll;
+          }
+          .box2 {
+            padding: 10px;
+            border: black;
+            grid-column: 2;
+            grid-row: 1;
+          }
+          .box3 {
+            padding: 10px;
+            border: black;
+            grid-column: 3;
+            grid-row: 1;
+          }
+          .box4 {
+            padding: 10px;
+            border: black;
+            grid-column: 1;
+            grid-row: 2 / 4;
+            max-height: 100%;
+            overflow-y: auto;
+          }
+          .box5 {
+            padding: 10px;
+            border: black;
+            grid-column: 2;
+            grid-row: 2 / 4;
+          }
+          .box6 {
+            padding: 10px;
+            border: black;
+            grid-column: 3;
+            grid-row: 2 / 4;
+            max-height: 100%;
+            overflow-y: auto;
+          }
+          .box7 {
+            padding: 10px;
+            border: black;
+            grid-column: 2;
+            grid-row: 3;
+          }
+          .text-center {
+            text-align: left;
+          }
+          .text-right {
+            float: right;
+          }
+          .text-editor-max {
+            width:100%;
+            height:100%; 
+            box-sizing: border-box;         /* For IE and modern versions of Chrome */
+            -moz-box-sizing: border-box;    /* For Firefox                          */
+            -webkit-box-sizing: border-box; /* For Safari                           */
+          }
+          .content-text {
+            white-space: pre-wrap; 
+            word-wrap: break-word;
+            font-family: inherit;
+          }
+        </style>
+    </head>
+    <body>
+        <div id="container" class="grid">
+          <div class="item box1 text-center">
+            <input v-model="searchTerm" placeholder="search" v-on:input="filterResults()"/>
+              <div class="text-right">items found: {{ itemsFound }} </div>
+          </div>
+          <div class="item box2">
+            <div>
+              <button v-on:click="setUpload">upload</button>
+              <button v-if="content.length > 1" v-on:click="setEditor">editor</button>
+            </div>
+          </div>
+              <div class="item box3">
+                content {{ this.show }}
+              </div>
+              <div class="item box4">
+                <ul v-on:click="get_detail">
+                  <li
+                  v-for="item in items"
+                  v-bind:item="item"
+                  v-bind:index="item.id"
+                  :data-detailurl="item.DetailURL"
+                  v-bind:key="item.Directories.join(',') + item.Name" 
+                  >
+                  {{ truncate(item.Name) }}
+                  </li>
+                </ul>
+              </div>
+            <div class="item box5">
+              <div v-if="this.detail.hasOwnProperty('Name')">
+                <h3>{{ detail.Name }}</h3>
+                <div>Size: {{ detail.SizeBytes }}</div>
+                <div>Last Modified: {{ detail.ModDate }}</div>
+                <div>IsDir: {{ detail.IsDir }}</div>
+                <div>Directories: {{ detail.Directories }}</div>
+                <button v-on:click="setPrevious">Previous</button>
+                <button v-on:click="setNext">Next</button>
+                <button v-on:click="deleteContent">Delete</button>
+                
+                <div v-if="this.detail.type == 'raw'">
+                  <button :data-contenturl="detail.ContentURL" v-on:click="setImage">Image</button>
+                  <button :data-contenturl="detail.ContentURL" v-on:click="setContent">Content</button>
+                  <button :data-contenturl="detail.ContentURL" v-on:click="setVideo">Video</button>
+                  <a :href="this.apiHost + detail.ContentURL"  download><i class="fa fa-download"></i>Download</a>
+                </div>
+                <div v-else>
+                    <button :data-contenturl="detail.ContentURL" v-on:click="setOpen">Open</button>
+                    <a :href="this.apiHost + detail.ContentURL"  download><i class="fa fa-download"></i>Download</a>
+                    
+                </div>
+              </div>
+            </div>
+            <div class="item box6">
+              <div v-if="this.activeDetail.hasOwnProperty('Name') && this.activeDetail.type == 'video'">
+                <div v-if="show">
+                  <video width="620" autoplay controls>
+                    <source :src="activeVideo">
+                  </video>
+                </div>
+              </div>
+              <div v-else-if="activeDetail.type == 'img'">
+                <img width="320" height="240" :src="this.activeDetail.apiContentURL">
+              </div>
+              <div v-else-if="activeDetail.type == 'txt'">
+                <div class="contentSpace">
+                  <div v-if="editorOn">
+                      <form enctype="multipart/form-data" action="this.apiHost + /upload/" method="post" onsubmit="return false">
+                       
+
+                        <textarea class="text-editor-max" type="texteara" name="uploadfile" >{{ content }}</textarea>
+                        <input type="submit" value="upload" />
+                        <div>
+                            <button type="button" v-on:click="addDir">Add Directory</button>
+                            <button v-if="dirs.length > 0" type="button" v-on:click="rmDir">Remove Directory</button>
+                          </div>
+                          <div v-for="item in dirs">
+                              <input type="text" name="dirs[]" value=""/>
+                          </div>
+                      </form>
+                  </div>
+                  <div v-else>
+                    <div class="content-text">
+                      {{ content  }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else>
+                <div class="contentSpace">
+                  {{ content }}
+                </div>
+              </div>
+            </div>
+              <div class="item box7">
+                <div v-if="uploadOn">
+                  <!--<form enctype="multipart/form-data" action="/upload/" method="post">-->
+                  <form enctype="multipart/form-data" action="this.apiHost + /upload/" method="post" onsubmit="return false">
+                    <input type="file" name="uploadfile" />
+                    <div>
+                      <button type="button" v-on:click="addDir">Add Directory</button>
+                      <button v-if="dirs.length > 0" type="button" v-on:click="rmDir">Remove Directory</button>
+                    </div>
+                    <div v-for="item in dirs">
+                      <input type="text" name="dirs[]" value=""/>
+                    </div>
+                    <input type="submit" value="upload" />
+                  </form>
+                </div>
+              </div>
+          </div>
+    <script>
+
+
+  var app = new Vue({
+    el: '#container',
+    data () {
+      return {
+        dirs: [],
+        items: [],
+        detail: {},
+        activeDetail: {},
+        activeVideo: '',
+        content: '',
+        contenturl: '',
+        videoOn: false,
+        imageOn: false,
+        contentOn: false,
+        uploadOn: false,
+        editorOn: false,
+        searchTerm: '',
+        searchInProgress: false,
+        // Override API host by adding host and port
+        apiHost: '',
+        extensions: {
+          'pdf': 'pdf',
+
+          'jpg': 'img',
+          'JPG': 'img',
+          'png': 'img',
+          'jpeg': 'img',
+
+          'mp4': 'video',
+          'mkv': 'video',
+          'avi': 'video',
+          'MP4': 'video',
+    
+          'vtt': 'txt',
+          'html': 'txt',
+          'url': 'txt',
+          'css': 'txt',
+          'srt': 'txt',
+          'txt': 'txt',
+          'json': 'txt',
+          'swp': 'txt',
+          'swo': 'txt',
+          'md5': 'txt',
+          'go': 'txt',
+          'js': 'txt',
+
+          'mp3': 'music',
+          },
+          show: true,
+        }
+    },
+    created() {
+      if (this.apiHost.length == 0 ) {
+        this.apiHost = location.origin
+      }
+      console.log(this.apiHost)
+    },
+    beforeMount () {
+
+      axios.get(this.apiHost + '/list/?orderby=name').then(res => this.items = res.data)
+    },
+    mounted () {
+      //axios.get('/list/?orderby=name/').then(res => this.items = res.data)
+
+    },
+  
+    computed: {
+      itemsFound: function() {
+        return this.items.length
+      }
+    },
+  
+    methods: {
+      get_detail: function (event) {
+        axios.get(this.apiHost + event.target.dataset.detailurl).then(res => (
+          this.createDetailItem(res.data))).catch((err) => {
+            console.log(err)
+          })
+      },
+      createDetailItem: function(data) {
+        data['extension'] = this.getExtenstion(data['Name'])
+        data['type'] = (this.extensions[data['extension']] !== undefined ? this.extensions[data['extension']]:  'raw')
+        data['apiContentURL'] = this.apiHost + data['ContentURL']
+        this.detail = data
+      },
+      setVideo: function(event) {
+        console.log("heijfiej")
+        this.detail.type = 'video'
+        this.content = ''
+
+      },
+      setImage: function(event) {
+        this.detail.type = 'img'
+        this.content = ''
+      },
+      setContent: function(event) {
+        this.detail.type = 'raw'
+      },
+      setOpen: function() {
+        this.activeDetail = this.detail
+        if (this.activeDetail.type == 'video') {
+          this.activeVideo = this.activeDetail.apiContentURL
+        }
+        if (this.activeDetail.type === 'raw' || this.activeDetail.type === 'txt') {
+          axios.get(this.activeDetail['apiContentURL']).then(res => this.content = res.data )
+        }
+        this.show  = false
+        this.$nextTick(() => {
+          this.show = true
+        });
+      },
+      setPrevious: function() {
+        for (i=0; i < this.items.length; i++) {
+          if (this.detail.DetailURL === this.items[i].DetailURL) {
+            index = i;
+            break;
+          }
+        }
+        nextUrl = this.items[(((index - 1) + this.items.length) % this.items.length)].DetailURL;
+        console.log((((index - 1) + this.items.length) % this.items.length));
+        axios.get(this.apiHost + nextUrl).then(res => (
+          this.createDetailItem(res.data))).catch((err) => {
+            console.log(err)
+          })
+      },
+      setNext: function() {
+        index = 0;
+        for (i=0; i < this.items.length; i++) {
+          if (this.detail.DetailURL === this.items[i].DetailURL) {
+            index = i;
+            break;
+          }
+        }
+        nextUrl = this.items[((index + 1) % (this.items.length))].DetailURL;
+        console.log(((index + 1) % (this.items.length)));
+        axios.get(this.apiHost + nextUrl).then(res => (
+          this.createDetailItem(res.data))).catch((err) => {
+            console.log(err)
+          })
+
+      },
+      setUpload: function() {
+        this.dirs = []
+        this.uploadOn = !this.uploadOn
+      },
+      setEditor: function() {
+        this.editorOn = !this.editorOn
+      },
+      deleteContent: function() {
+        console.log(this.apiHost + this.detail.ContentURL)
+        axios.delete(this.apiHost +  this.detail.ContentURL)
+      },
+      addDir: function() {
+        this.dirs.push(true)
+      },
+      rmDir: function() {
+        this.dirs.pop()
+      },
+      truncate: function(text) {
+        return  text.slice(0, 50)
+      },
+      filterResults: function() {
+        if (!this.searchInProgress) {
+          this.searchInProgress = true
+          setTimeout(() => {
+            axios.get(this.apiHost + '/list/?filter='+this.searchTerm).then(res => this.items = res.data)
+            this.searchInProgress = false
+          }, 500);
+        }
+      },
+      getExtenstion: function(s) {
+        let items = s.split('.')
+        return items[items.length -1]
+      }
+    },
+  
+    filter: {
+      truncate: function (text, stop, clamp) {
+      return text.slice(0, stop) + (stop < text.length ? clamp || '...' : '')
+      }
+    }
+  })
+  
+  
+        </script>
+    </body>
+</html>
+  
+
