@@ -42,6 +42,7 @@ var BASEDIR = "/home/meneer/Development/silo/files"
 //Sync goroutine is responsible for updating the cache
 type CacheMap map[string]*File
 type CacheFiles struct {
+	Cycle int64
 	Items CacheMap
 	Mu    sync.RWMutex
 }
@@ -61,8 +62,10 @@ func (c *CacheFiles) Get(k string) (*File, bool) {
 
 func (c *CacheFiles) Update(newItems CacheMap) {
 	c.Mu.Lock()
+	now := time.Now()
 	defer c.Mu.Unlock()
 	c.Items = newItems
+	c.Cycle = now.UnixNano()
 }
 
 var Cache = &CacheFiles{Items: make(CacheMap)}
@@ -423,6 +426,7 @@ func listRest(w http.ResponseWriter, r *http.Request) {
 	items := handleParameters(w, r)
 
 	w.Header().Set("Total-Items", strconv.Itoa(len(items)))
+	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
 	w.WriteHeader(http.StatusOK)
 
 	json.NewEncoder(w).Encode(items)
