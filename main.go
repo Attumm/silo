@@ -435,6 +435,7 @@ func listRest(w http.ResponseWriter, r *http.Request) {
 func listGroupedRest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
 	items := handleParameters(w, r)
 
 	w.Header().Set("Total-Items", strconv.Itoa(len(items)))
@@ -485,6 +486,7 @@ func detailRest(w http.ResponseWriter, r *http.Request) {
 	filename := r.URL.Path[len("/detail"):]
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
 	w.WriteHeader(http.StatusOK)
 	// TODO missing handling of 404
 	file, ok := Cache.Get(filename)
@@ -498,6 +500,7 @@ func detailRest(w http.ResponseWriter, r *http.Request) {
 
 func contentRest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
 	filename, err := url.PathUnescape(r.URL.Path[len("/content"):])
 	if err != nil {
 		ErrorResponse(w, "Unable to parse URL", http.StatusBadRequest)
@@ -533,6 +536,7 @@ func contentRest(w http.ResponseWriter, r *http.Request) {
 
 func deleteRest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
 	filename, err := url.PathUnescape(r.URL.Path[len("/delete"):])
 	if err != nil {
 		ErrorResponse(w, "Unable to parse URL", http.StatusBadRequest)
@@ -552,6 +556,7 @@ func deleteRest(w http.ResponseWriter, r *http.Request) {
 
 func uploadRest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
 	r.ParseMultipartForm(32 << 20)
 	file, handler, err := r.FormFile("uploadfile")
 	if err != nil {
@@ -602,6 +607,7 @@ func indexView(w http.ResponseWriter, r *http.Request) {
 }
 
 func itemsView(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
 	listItems := handleParameters(w, r)
 	items := []string{}
 	for _, item := range listItems {
@@ -618,6 +624,7 @@ func itemsView(w http.ResponseWriter, r *http.Request) {
 }
 
 func viewView(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
 	filename, err := url.PathUnescape(r.URL.Path[len("/view"):])
 	if err != nil {
 		ErrorResponse(w, "Unable to parse URL", http.StatusBadRequest)
@@ -649,6 +656,7 @@ func viewView(w http.ResponseWriter, r *http.Request) {
 }
 
 func videoView(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
 	filename, err := url.PathUnescape(r.URL.Path[len("/video"):])
 	if err != nil {
 		ErrorResponse(w, "Unable to parse URL", http.StatusBadRequest)
@@ -675,6 +683,7 @@ func videoView(w http.ResponseWriter, r *http.Request) {
 }
 
 func addView(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
 	// TODO add template
 	response := fmt.Sprintf(`
 		<html>
