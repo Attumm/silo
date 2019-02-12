@@ -7,7 +7,6 @@ import (
 	"strconv"
 )
 
-
 type Settings struct {
 	CORSSet		bool
 	CORSDomains	string
