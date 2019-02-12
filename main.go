@@ -3,7 +3,7 @@ package main
 /* README
 To make use of this application, create new user, without login and homedir.
 Create new directory and make new user owner of the directory.
-Set BASEDIR to absolute path of directory.
+Set SETTINGS.Base to absolute path of directory.
 Run this application only with the new user.
 
 This will prevent many security issues.
@@ -21,331 +21,31 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
+
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 )
-
-// Globals
-//var BASEDIR = "/home/meneer/Downloads"
-var BASEDIR = "/home/meneer/Development/silo/files"
-
-// Global Cache Readonly for user input.
-//Sync goroutine is responsible for updating the cache
-type CacheMap map[string]*File
-type CacheFiles struct {
-	Cycle int64
-	Items CacheMap
-	Mu    sync.RWMutex
-}
-
-func (c *CacheFiles) Set(k string, f *File) {
-	c.Mu.Lock()
-	defer c.Mu.Unlock()
-	c.Items[k] = f
-}
-
-func (c *CacheFiles) Get(k string) (*File, bool) {
-	c.Mu.RLock()
-	defer c.Mu.RUnlock()
-	found, ok := c.Items[k]
-	return found, ok
-}
-
-func (c *CacheFiles) Update(newItems CacheMap) {
-	c.Mu.Lock()
-	now := time.Now()
-	defer c.Mu.Unlock()
-	c.Items = newItems
-	c.Cycle = now.UnixNano()
-}
 
 var Cache = &CacheFiles{Items: make(CacheMap)}
 
-// File And ListFile Structs and functions
-type File struct {
-	Name    string
-	Size    int64
-	AbsPath string
-	RelPath string
-	IsDir   bool
-	ModDate int64
+type Settings struct {
+	CORSSet     bool
+	CORSDomains string
+	Base        string
+	Host        string
 }
 
-type ListFile struct {
-	Name        string
-	ModDate     int64
-	SizeBytes   string
-	IsDir       bool
-	Directories []string
-	DetailURL   string
-	ContentURL  string
-	VideoURL    string
-	ViewURL     string
-}
-
-type ListFileGrouped struct {
-	Name        string
-	ModDate     int64
-	SizeBytes   string
-	IsDir       bool
-	Directories []string
-	DetailURL   string
-	ContentURL  string
-	VideoURL    string
-	ViewURL     string
-	Grouped     []*ListFileGrouped
-}
-
-func (f File) fullPath() string {
-	return filepath.Join(f.AbsPath, f.Name)
-}
-
-func (f File) rellFullPath() string {
-	return f.RelPath + f.Name
-}
-
-func (f File) urlEncoded() string {
-	return url.PathEscape(f.rellFullPath())
-}
-
-func (f File) urlFor(s string) string {
-	return "/" + s + f.urlEncoded()
-}
-
-func (f File) ListFile() ListFile {
-	return ListFile{
-		Name:        f.Name,
-		ModDate:     f.ModDate,
-		SizeBytes:   strconv.FormatInt(f.Size, 10),
-		IsDir:       f.IsDir,
-		DetailURL:   f.urlFor("detail"),
-		ContentURL:  f.urlFor("content"),
-		VideoURL:    f.urlFor("video"),
-		ViewURL:     f.urlFor("view"),
-		Directories: removeEmpty(strings.Split(f.RelPath, string(filepath.Separator))),
-	}
-}
-
-func (f ListFile) ListFileGrouped() *ListFileGrouped {
-	return &ListFileGrouped{
-		Name:        f.Name,
-		ModDate:     f.ModDate,
-		SizeBytes:   f.SizeBytes,
-		IsDir:       f.IsDir,
-		DetailURL:   f.DetailURL,
-		ContentURL:  f.ContentURL,
-		VideoURL:    f.VideoURL,
-		ViewURL:     f.ViewURL,
-		Directories: f.Directories,
-		Grouped:     []*ListFileGrouped{},
-	}
-}
-
-func filter(c *CacheFiles, filters []string) []ListFile {
-	newItems := []ListFile{}
-	c.Mu.RLock()
-	defer c.Mu.RUnlock()
-	for _, file := range c.Items {
-		if notContains(file.Name, filters) {
-			newItems = append(newItems, file.ListFile())
-		}
-	}
-	return newItems
-}
-
-func notContains(item string, searchTerms []string) bool {
-	for _, searchTerm := range searchTerms {
-		if !strings.Contains(item, searchTerm) {
-			return false
-		}
-	}
-	return true
-}
-
-func contains(item string, searchTerms []string) bool {
-	for _, searchTerm := range searchTerms {
-		if strings.Contains(item, searchTerm) {
-			return true
-		}
-	}
-	return false
-}
-
-func exclude(items []ListFile, filters []string) []ListFile {
-	newItems := []ListFile{}
-	for _, file := range items {
-		if !contains(file.Name, filters) {
-			newItems = append(newItems, file)
-		}
-	}
-	return newItems
-}
-
-func list(c *CacheFiles) []ListFile {
-	newItems := []ListFile{}
-	c.Mu.RLock()
-	defer c.Mu.RUnlock()
-	for _, file := range c.Items {
-		newItems = append(newItems, file.ListFile())
-	}
-	return newItems
-}
-
-func listTypeAhead(c *CacheFiles, prefix string) []ListFile {
-	newItems := []ListFile{}
-	c.Mu.RLock()
-	defer c.Mu.RUnlock()
-	for _, file := range c.Items {
-		if strings.HasPrefix(file.Name, prefix) {
-			newItems = append(newItems, file.ListFile())
-		}
-	}
-	return newItems
-}
-
-func subDir(full, sub []string) bool {
-	if len(full) < len(sub) {
-		return false
-	}
-	for i, v := range sub {
-		if v != full[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func filterDirs(items []ListFile, filters []string) []ListFile {
-	newItems := []ListFile{}
-	for _, item := range items {
-		if subDir(item.Directories, filters) {
-			newItems = append(newItems, item)
-		}
-	}
-	return newItems
-}
-
-func sortBy(items []ListFile, attr string) {
-	sortFuncs := map[string]func(int, int) bool{
-		"name":  func(i, j int) bool { return items[i].Name < items[j].Name },
-		"-name": func(i, j int) bool { return items[i].Name > items[j].Name },
-		"-date": func(i, j int) bool { return items[i].ModDate < items[j].ModDate },
-		"date":  func(i, j int) bool { return items[i].ModDate > items[j].ModDate },
-	}
-	if sortFunc, found := sortFuncs[attr]; found {
-		sort.Slice(items, sortFunc)
-	}
-}
-
-// syncFiles responsible for updating the cache
-
-func syncFiles(path string) {
-	var start time.Time
-	for {
-		start = time.Now()
-		fileChan := make(chan *File, 100)
-		go DirWalk(path, fileChan, true)
-		items := make(map[string]*File)
-		for file := range fileChan {
-			items[file.rellFullPath()] = file
-		}
-		Cache.Update(items)
-		fmt.Println("ingestion took:", time.Now().Sub(start))
-
-		time.Sleep(time.Second * 1)
-	}
-}
-
-func DirWalk(path string, fileChan chan *File, toplevel bool) {
-	var absPath string
-	if filepath.IsAbs(path) {
-		absPath = path
-	} else {
-		var err error
-		absPath, err = filepath.Abs(path)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	files, err := ioutil.ReadDir(absPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, file := range files {
-		// TODO check mod time, to skip unchanged files.
-		fileChan <- &File{
-			Name:    file.Name(),
-			ModDate: file.ModTime().Unix(),
-			Size:    file.Size(),
-			AbsPath: absPath,
-			RelPath: path[len(BASEDIR):] + string(filepath.Separator),
-			IsDir:   file.IsDir(),
-		}
-		if file.IsDir() {
-			DirWalk(filepath.Join(path, file.Name()), fileChan, false)
-		}
-	}
-	if toplevel {
-		close(fileChan)
-	}
-}
-
-// Response structs
-type ErrorMsg struct {
-	Error      string
-	Reason     string
-	HttpStatus int
-}
-
-type UploadSuccesResponse struct {
-	Message     string
-	Filename    string
-	ContentURL  string
-	Directories []string
-}
+var SETTINGS = Settings{}
 
 func ErrorResponse(w http.ResponseWriter, reason string, httpStatus int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpStatus)
-	json.NewEncoder(w).Encode(ErrorMsg{Error: "Error", Reason: reason, HttpStatus: httpStatus})
-}
-
-// Util Functions
-
-func removeEmpty(l []string) []string {
-	nonEmpty := []string{}
-	for _, v := range l {
-		if len(v) > 0 {
-			nonEmpty = append(nonEmpty, v)
-		}
-	}
-	return nonEmpty
-}
-
-func FilenameFromAbsPath(absPath string) string {
-	items := strings.Split(absPath, string(filepath.Separator))
-	return items[len(items)-1]
-}
-
-func intMoreDefault(s string, defaultN int) int {
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		return 0
-	}
-	if n < defaultN {
-		return defaultN
-	}
-	return n
+	json.NewEncoder(w).Encode(ErrorMsg{Error: "Error", Reason: reason, HTTPStatus: httpStatus})
 }
 
 func handleParameters(w http.ResponseWriter, r *http.Request) []ListFile {
@@ -359,7 +59,6 @@ func handleParameters(w http.ResponseWriter, r *http.Request) []ListFile {
 	typeAhead, typeAheadGiven := r.URL.Query()["typeahead"]
 
 	var listItems []ListFile
-
 	//TODO make generalist filter function that can take many filter option and loops one
 	if filterGiven {
 		listItems = filter(Cache, filters)
@@ -410,23 +109,21 @@ func handleParameters(w http.ResponseWriter, r *http.Request) []ListFile {
 	}
 	if len(listItems) <= limit {
 		return listItems[start:end]
-	} else {
-		listItems = listItems[start:end]
-		if len(listItems) < limit {
-			return listItems
-		}
-		return listItems[:limit]
 	}
+	listItems = listItems[start:end]
+	if len(listItems) < limit {
+		return listItems
+	}
+	return listItems[:limit]
 }
 
 // REST API functions
 func listRest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	setHeader(w)
 	items := handleParameters(w, r)
 
 	w.Header().Set("Total-Items", strconv.Itoa(len(items)))
-	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
 	w.WriteHeader(http.StatusOK)
 
 	json.NewEncoder(w).Encode(items)
@@ -434,73 +131,31 @@ func listRest(w http.ResponseWriter, r *http.Request) {
 
 func listGroupedRest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
+	setHeader(w)
 	items := handleParameters(w, r)
 
 	w.Header().Set("Total-Items", strconv.Itoa(len(items)))
 	w.WriteHeader(http.StatusOK)
 
-	topLevel := &ListFileGrouped{
-		Name:        "topLevel",
-		ModDate:     1,
-		SizeBytes:   "1",
-		IsDir:       true,
-		DetailURL:   "",
-		ContentURL:  "",
-		VideoURL:    "",
-		ViewURL:     "",
-		Directories: []string{},
-		Grouped:     []*ListFileGrouped{},
-	}
-
-	dirs := make(map[string]*ListFileGrouped)
-	groupedItems := []*ListFileGrouped{}
-	for i, _ := range items {
-		itemGrouped := items[i].ListFileGrouped()
-		groupedItems = append(groupedItems, itemGrouped)
-
-		if itemGrouped.IsDir {
-			tmp := strings.Join(itemGrouped.Directories, "") + itemGrouped.Name
-			topLevel.Grouped = append(topLevel.Grouped, itemGrouped)
-			dirs[tmp] = itemGrouped
-		}
-	}
-
-	dirs["<---->"] = topLevel
-
-	for i, _ := range groupedItems {
-		if groupedItems[i].IsDir {
-			continue
-		}
-		a := dirs[strings.Join(groupedItems[i].Directories, "")]
-		if a == nil {
-			a = dirs["<---->"]
-		}
-		a.Grouped = append(a.Grouped, groupedItems[i])
-	}
-	json.NewEncoder(w).Encode(topLevel)
+	json.NewEncoder(w).Encode(ListFileToGrouped(items))
 }
 
 func detailRest(w http.ResponseWriter, r *http.Request) {
 	filename := r.URL.Path[len("/detail"):]
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
+	setHeader(w)
 	w.WriteHeader(http.StatusOK)
 	// TODO missing handling of 404
 	file, ok := Cache.Get(filename)
 	if !ok {
 		ErrorResponse(w, "File not found", http.StatusNotFound)
 		return
-	} else {
-		json.NewEncoder(w).Encode(file.ListFile())
 	}
+	json.NewEncoder(w).Encode(file.ListFile())
 }
 
 func contentRest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
+	setHeader(w)
 	filename, err := url.PathUnescape(r.URL.Path[len("/content"):])
 	if err != nil {
 		ErrorResponse(w, "Unable to parse URL", http.StatusBadRequest)
@@ -508,7 +163,7 @@ func contentRest(w http.ResponseWriter, r *http.Request) {
 	}
 	// To run without CacheFiles, and your own peril.
 	// You'll be ungaurded against path traversal attacks are possible
-	// http.ServeFile(w, r, filepath.Join(BASEDIR, filename))
+	// http.ServeFile(w, r, filepath.Join(SETTINGS.Base, filename))
 	// uncomment the line above, comment out or remove everything below
 
 	file, found := Cache.Get(filename)
@@ -535,8 +190,7 @@ func contentRest(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteRest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
+	setHeader(w)
 	filename, err := url.PathUnescape(r.URL.Path[len("/delete"):])
 	if err != nil {
 		ErrorResponse(w, "Unable to parse URL", http.StatusBadRequest)
@@ -555,8 +209,8 @@ func deleteRest(w http.ResponseWriter, r *http.Request) {
 }
 
 func uploadRest(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
+	setHeader(w)
+
 	r.ParseMultipartForm(32 << 20)
 	file, handler, err := r.FormFile("uploadfile")
 	if err != nil {
@@ -577,7 +231,7 @@ func uploadRest(w http.ResponseWriter, r *http.Request) {
 
 	// TODO add validation on cleaned filename
 	clFilename := cleanFilename(handler.Filename)
-	fp := filepath.Join(BASEDIR, strings.Join(dirs, string(filepath.Separator)), clFilename)
+	fp := filepath.Join(SETTINGS.Base, strings.Join(dirs, string(filepath.Separator)), clFilename)
 	f, err := os.OpenFile(fp, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		ErrorResponse(w, "Unable to store file", http.StatusBadRequest)
@@ -588,7 +242,7 @@ func uploadRest(w http.ResponseWriter, r *http.Request) {
 
 	absPath := f.Name()
 	filename := FilenameFromAbsPath(absPath)
-	rellFullPath := absPath[len(BASEDIR):]
+	rellFullPath := absPath[len(SETTINGS.Base):]
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
@@ -599,15 +253,29 @@ func uploadRest(w http.ResponseWriter, r *http.Request) {
 		Directories: removeEmpty(strings.Split(rellFullPath[:len(rellFullPath)-len(filename)], "/")),
 	})
 }
+func setHeader(w http.ResponseWriter) {
+	if SETTINGS.CORSSet {
+		w.Header().Set("Access-Control-Allow-Origin", SETTINGS.CORSDomains)
+	}
+	w.Header().Set("Last-Update", strconv.Itoa(Cache.LastCycleSec()))
+}
+
+func cycleRest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	setHeader(w)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode("joi")
+}
 
 // HTML VIEWS functions
 
 func indexView(w http.ResponseWriter, r *http.Request) {
+	setHeader(w)
 	http.ServeFile(w, r, "index.html")
 }
 
 func itemsView(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
+	setHeader(w)
 	listItems := handleParameters(w, r)
 	items := []string{}
 	for _, item := range listItems {
@@ -624,7 +292,7 @@ func itemsView(w http.ResponseWriter, r *http.Request) {
 }
 
 func viewView(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
+	setHeader(w)
 	filename, err := url.PathUnescape(r.URL.Path[len("/view"):])
 	if err != nil {
 		ErrorResponse(w, "Unable to parse URL", http.StatusBadRequest)
@@ -656,34 +324,35 @@ func viewView(w http.ResponseWriter, r *http.Request) {
 }
 
 func videoView(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
+	setHeader(w)
 	filename, err := url.PathUnescape(r.URL.Path[len("/video"):])
 	if err != nil {
 		ErrorResponse(w, "Unable to parse URL", http.StatusBadRequest)
-		return
+		log.Fatal("Unable to Parse URL")
 	}
-	if file, found := Cache.Get(filename); !found {
+	file, found := Cache.Get(filename)
+
+	if !found {
 		ErrorResponse(w, "File not found", http.StatusNotFound)
-		return
-	} else {
-		t := template.New("page")
-		// TODO store templates in a map
-		t, err := t.Parse(`
+		log.Fatal("File not found")
+	}
+	tmpl := template.New("page")
+	// TODO store templates in a map
+	t, err := tmpl.Parse(`
 	<html>
 	<body>
 		<video width="320" heigt="240"  autoplay controls>
 		<source src="{{ .ContentURL }}">
 	</body>
 	</html>`)
-		if err != nil {
-			log.Fatal(err)
-		}
-		t.Execute(w, file.ListFile())
+	if err != nil {
+		log.Fatal(err)
 	}
+	t.Execute(w, file.ListFile())
 }
 
 func addView(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Last-Update", strconv.FormatInt((Cache.Cycle/1000000), 10))
+	setHeader(w)
 	// TODO add template
 	response := fmt.Sprintf(`
 		<html>
@@ -694,23 +363,33 @@ func addView(w http.ResponseWriter, r *http.Request) {
 				<input type="submit" value="upload" />
 			</form>
 			</body>
-			</html>
+		</html>
 	`)
 	fmt.Fprint(w, response)
 }
 
-func main() {
-	// TODO refactor code around BASEDIR
+func init() {
 	var base string
 	var host string
-	flag.StringVar(&base, "base", "/home/meneer/Development/silo/files", "set the basedir")
+	var corsDomains string
+
+	flag.StringVar(&base, "base", "/app/files", "set the basedir")
 	flag.StringVar(&host, "host", "0.0.0.0:8000", "enter host with port")
-	if base != BASEDIR {
-		BASEDIR = base
-	}
+	flag.StringVar(&corsDomains, "cors", "", "Domains whitelisted under cors")
 	flag.Parse()
 
-	go syncFiles(base)
+	SETTINGS.Base = base
+	SETTINGS.Host = host
+	SETTINGS.CORSSet = len(corsDomains) > 1
+	SETTINGS.CORSDomains = corsDomains
+
+	fmt.Println("start server", SETTINGS.Host)
+	fmt.Println("file path: ", SETTINGS.Host)
+}
+
+func main() {
+
+	go syncFiles(SETTINGS.Base)
 
 	//Rest Api
 	http.HandleFunc("/list/group/", listGroupedRest)
@@ -721,6 +400,8 @@ func main() {
 	http.HandleFunc("/upload/", uploadRest)
 	http.HandleFunc("/delete/", deleteRest)
 
+	http.HandleFunc("/cycle/", cycleRest)
+
 	// Vue view
 	http.HandleFunc("/", indexView)
 
@@ -730,29 +411,5 @@ func main() {
 	http.HandleFunc("/video/", videoView)
 	http.HandleFunc("/add/", addView)
 
-	log.Fatal(http.ListenAndServe(host, nil))
-}
-
-// utils
-
-func cleanFilename(s string) string {
-	// ord 65 to 90 uppercase alphabet
-	// ord 97 to 122 lowercase alphabet
-	// ord 46 == '.'
-	rr := []rune(s)
-	n := []rune{}
-	f := false
-	for _, r := range rr {
-		if r >= 65 && r <= 90 {
-			f = false
-			n = append(n, r)
-		} else if r >= 97 && r <= 122 {
-			f = false
-			n = append(n, r)
-		} else if r == 46 && !f {
-			f = true
-			n = append(n, r)
-		}
-	}
-	return string(n)
+	log.Fatal(http.ListenAndServe(SETTINGS.Host, nil))
 }

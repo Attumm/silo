@@ -220,6 +220,7 @@
     el: '#container',
     data () {
       return {
+        lastUpdated: '',
         dirs: [],
         items: [],
         detail: {},
@@ -227,6 +228,7 @@
         activeVideo: '',
         content: '',
         contenturl: '',
+
         videoOn: false,
         imageOn: false,
         contentOn: false,
@@ -272,14 +274,12 @@
         this.apiHost = location.origin
       }
       console.log(this.apiHost)
+      setInterval( this.checkCycle, 1000).bind(this)
     },
-    beforeMount () {
 
-      axios.get(this.apiHost + '/list/?orderby=name').then(res => this.items = res.data)
-    },
-    mounted () {
-      //axios.get('/list/?orderby=name/').then(res => this.items = res.data)
-
+    beforeMount() {
+      axios.get(this.apiHost + '/list/?orderby=name').then((res) => this.items = res.data)
+      axios.get(this.apiHost + '/list/?orderby=name').then((res) => this.lastUpdated = res.header['Last-Update'])
     },
   
     computed: {
@@ -302,7 +302,6 @@
         this.detail = data
       },
       setVideo: function(event) {
-        console.log("heijfiej")
         this.detail.type = 'video'
         this.content = ''
 
@@ -335,7 +334,6 @@
           }
         }
         nextUrl = this.items[(((index - 1) + this.items.length) % this.items.length)].DetailURL;
-        console.log((((index - 1) + this.items.length) % this.items.length));
         axios.get(this.apiHost + nextUrl).then(res => (
           this.createDetailItem(res.data))).catch((err) => {
             console.log(err)
@@ -350,7 +348,6 @@
           }
         }
         nextUrl = this.items[((index + 1) % (this.items.length))].DetailURL;
-        console.log(((index + 1) % (this.items.length)));
         axios.get(this.apiHost + nextUrl).then(res => (
           this.createDetailItem(res.data))).catch((err) => {
             console.log(err)
@@ -365,7 +362,6 @@
         this.editorOn = !this.editorOn
       },
       deleteContent: function() {
-        console.log(this.apiHost + this.detail.ContentURL)
         axios.delete(this.apiHost +  this.detail.ContentURL)
       },
       addDir: function() {
@@ -389,6 +385,21 @@
       getExtenstion: function(s) {
         let items = s.split('.')
         return items[items.length -1]
+      },
+      checkCycle: function() {
+      // TODO should only check after item has been deleted
+      lastUpdated = ''
+      axios.get(this.apiHost + '/cycle/').then((res) => lastUpdated = res.header['Last-Update']).bind(this)
+        console.log(lastUpdated)
+        if (!this.searchInProgress) {
+          if (lastUpdated != this.lastUpdated) {
+            if (this.searchTerm.length > 1) {
+              axios.get(this.apiHost + '/list/?filter='+this.searchTerm).then(res => this.items = res.data).bind(this)
+            } else {
+              axios.get(this.apiHost + '/list/').then(res => this.items = res.data).bind(this)
+            }
+          }
+        }
       }
     },
   
@@ -396,12 +407,13 @@
       truncate: function (text, stop, clamp) {
       return text.slice(0, stop) + (stop < text.length ? clamp || '...' : '')
       }
-    }
+    },
+    mounted: () => {
+
+      }
   })
   
   
         </script>
     </body>
 </html>
-  
-
