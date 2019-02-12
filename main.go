@@ -25,7 +25,6 @@ import (
 var Cache = &CacheFiles{Items: make(CacheMap)}
 var SETTINGS = Settings{}
 
-
 func init() {
 	var base string
 	var host string
@@ -44,13 +43,13 @@ func init() {
 	SETTINGS.CORSSet = len(corsDomains) > 1
 	SETTINGS.CORSDomains = corsDomains
 	SETTINGS.SyncPauze = syncPauze
+}
+
+func main() {
 
 	fmt.Println("Start server:", SETTINGS.Host)
 	fmt.Println("File path:", SETTINGS.Host)
 	fmt.Println("Sync pauze, seconds:", SETTINGS.SyncPauze)
-}
-
-func main() {
 
 	go syncFiles(SETTINGS.Base)
 
