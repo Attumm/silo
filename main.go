@@ -357,19 +357,24 @@ func init() {
 	var base string
 	var host string
 	var corsDomains string
+	var syncPauze int
 
 	flag.StringVar(&base, "base", "/app/files", "set the basedir")
 	flag.StringVar(&host, "host", "0.0.0.0:8000", "enter host with port")
 	flag.StringVar(&corsDomains, "cors", "", "Domains whitelisted under cors")
+	flag.IntVar(&syncPauze, "sync", 1, "Pauze between directory cache syncs, in seconds")
+
 	flag.Parse()
 
 	SETTINGS.Base = base
 	SETTINGS.Host = host
 	SETTINGS.CORSSet = len(corsDomains) > 1
 	SETTINGS.CORSDomains = corsDomains
+	SETTINGS.SyncPauze = syncPauze
 
-	fmt.Println("start server", SETTINGS.Host)
-	fmt.Println("file path: ", SETTINGS.Host)
+	fmt.Println("Start server:", SETTINGS.Host)
+	fmt.Println("File path:", SETTINGS.Host)
+	fmt.Println("Sync pauze, seconds:", SETTINGS.SyncPauze)
 }
 
 func main() {

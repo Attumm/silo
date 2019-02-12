@@ -34,7 +34,7 @@ func syncFiles(path string) {
 			Cache.Update(items)
 		}
 		fmt.Println("ingestion took:", time.Now().Sub(start))
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Second * time.Duration(SETTINGS.SyncPauze))
 	}
 }
 

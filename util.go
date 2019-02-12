@@ -9,10 +9,11 @@ import (
 
 
 type Settings struct {
-	CORSSet     bool
-	CORSDomains string
-	Base        string
-	Host        string
+	CORSSet		bool
+	CORSDomains	string
+	Base		string
+	Host		string
+	SyncPauze	int
 }
 
 func cleanFilename(s string) string {
