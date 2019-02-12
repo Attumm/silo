@@ -1,8 +1,10 @@
 package main
 
 import (
-	"strings"
+	"net/http"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 // Response structs
@@ -18,7 +20,6 @@ type UploadSuccesResponse struct {
 	ContentURL  string
 	Directories []string
 }
-
 
 func filter(c *CacheFiles, filters []string) []ListFile {
 	newItems := []ListFile{}
@@ -114,4 +115,11 @@ func sortBy(items []ListFile, attr string) {
 	if sortFunc, found := sortFuncs[attr]; found {
 		sort.Slice(items, sortFunc)
 	}
+}
+
+func setHeader(w http.ResponseWriter) {
+	if SETTINGS.CORSSet {
+		w.Header().Set("Access-Control-Allow-Origin", SETTINGS.CORSDomains)
+	}
+	w.Header().Set("Last-Update", strconv.Itoa(Cache.LastCycleSec()))
 }

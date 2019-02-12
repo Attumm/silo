@@ -2,31 +2,35 @@ package main
 
 import (
 	"fmt"
-	"time"
 	"io/ioutil"
-	"path/filepath"
 	"log"
+	"path/filepath"
+	"time"
 )
 
 func syncFiles(path string) {
 	var start time.Time
-	var changeFound bool
+	var updateCache bool
 	for {
 		start = time.Now()
 		fileChan := make(chan *File, 100)
 		go DirWalk(path, fileChan, true)
 		items := make(map[string]*File)
 
-		changeFound = false
+		updateCache = false
 		for file := range fileChan {
 			filePath := file.rellFullPath()
-			if _, found := Cache.Get(filePath); !found {
-				changeFound = true
+			cachedFile, found := Cache.Get(filePath)
+			if !found || cachedFile.ModDate != file.ModDate {
+				updateCache = true
+				file.SetContentType()
+				items[filePath] = file
+			} else {
+				items[filePath] = cachedFile
 			}
-			items[filePath] = file
 		}
-		if changeFound || len(items) != Cache.Length() {
-			fmt.Println("update items", changeFound, len(items), Cache.Length())
+		if updateCache || len(items) != Cache.Length() {
+			fmt.Println("update items", updateCache, len(items), Cache.Length())
 			Cache.Update(items)
 		}
 		fmt.Println("ingestion took:", time.Now().Sub(start))

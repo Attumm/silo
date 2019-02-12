@@ -31,15 +31,8 @@ import (
 	"strings"
 )
 
+
 var Cache = &CacheFiles{Items: make(CacheMap)}
-
-type Settings struct {
-	CORSSet     bool
-	CORSDomains string
-	Base        string
-	Host        string
-}
-
 var SETTINGS = Settings{}
 
 func ErrorResponse(w http.ResponseWriter, reason string, httpStatus int) {
@@ -210,7 +203,6 @@ func deleteRest(w http.ResponseWriter, r *http.Request) {
 
 func uploadRest(w http.ResponseWriter, r *http.Request) {
 	setHeader(w)
-
 	r.ParseMultipartForm(32 << 20)
 	file, handler, err := r.FormFile("uploadfile")
 	if err != nil {
@@ -253,12 +245,6 @@ func uploadRest(w http.ResponseWriter, r *http.Request) {
 		Directories: removeEmpty(strings.Split(rellFullPath[:len(rellFullPath)-len(filename)], "/")),
 	})
 }
-func setHeader(w http.ResponseWriter) {
-	if SETTINGS.CORSSet {
-		w.Header().Set("Access-Control-Allow-Origin", SETTINGS.CORSDomains)
-	}
-	w.Header().Set("Last-Update", strconv.Itoa(Cache.LastCycleSec()))
-}
 
 func cycleRest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -268,7 +254,6 @@ func cycleRest(w http.ResponseWriter, r *http.Request) {
 }
 
 // HTML VIEWS functions
-
 func indexView(w http.ResponseWriter, r *http.Request) {
 	setHeader(w)
 	http.ServeFile(w, r, "index.html")

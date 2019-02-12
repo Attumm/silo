@@ -1,12 +1,14 @@
 package main
 
 import (
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
-	"strings"
-	"path/filepath"
-	"net/url"
-	"strconv"
 )
 
 // Global Cache Readonly for user input.
@@ -50,17 +52,18 @@ func (c *CacheFiles) LastCycle() int64 {
 }
 
 func (c *CacheFiles) LastCycleSec() int {
-	return int(c.LastCycle()/1000000) 
+	return int(c.LastCycle() / 1000000)
 }
 
 // File And ListFile Structs and functions
 type File struct {
-	Name    string
-	Size    int64
-	AbsPath string
-	RelPath string
-	IsDir   bool
-	ModDate int64
+	Name        string
+	Size        int64
+	AbsPath     string
+	RelPath     string
+	IsDir       bool
+	ModDate     int64
+	ContentType string
 }
 
 type ListFile struct {
@@ -68,6 +71,7 @@ type ListFile struct {
 	ModDate     int64
 	SizeBytes   string
 	IsDir       bool
+	ContentType string
 	Directories []string
 	DetailURL   string
 	ContentURL  string
@@ -80,6 +84,7 @@ type ListFileGrouped struct {
 	ModDate     int64
 	SizeBytes   string
 	IsDir       bool
+	ContentType string
 	Directories []string
 	DetailURL   string
 	ContentURL  string
@@ -94,6 +99,7 @@ func ListFileToGrouped(items []ListFile) *ListFileGrouped {
 		ModDate:     1,
 		SizeBytes:   "1",
 		IsDir:       true,
+		ContentType: "",
 		DetailURL:   "",
 		ContentURL:  "",
 		VideoURL:    "",
@@ -146,12 +152,27 @@ func (f File) urlFor(s string) string {
 	return "/" + s + f.urlEncoded()
 }
 
+func (f *File) SetContentType() {
+	osFile, err := os.Open(f.fullPath())
+	if err != nil {
+		return
+	}
+	defer osFile.Close()
+	buffer := make([]byte, 512)
+	if _, err := osFile.Read(buffer); err != nil {
+		return
+	}
+	osFile.Seek(0, 0)
+	f.ContentType = http.DetectContentType(buffer)
+}
+
 func (f File) ListFile() ListFile {
 	return ListFile{
 		Name:        f.Name,
 		ModDate:     f.ModDate,
 		SizeBytes:   strconv.FormatInt(f.Size, 10),
 		IsDir:       f.IsDir,
+		ContentType: f.ContentType,
 		DetailURL:   f.urlFor("detail"),
 		ContentURL:  f.urlFor("content"),
 		VideoURL:    f.urlFor("video"),
@@ -166,6 +187,7 @@ func (f ListFile) ListFileGrouped() *ListFileGrouped {
 		ModDate:     f.ModDate,
 		SizeBytes:   f.SizeBytes,
 		IsDir:       f.IsDir,
+		ContentType: f.ContentType,
 		DetailURL:   f.DetailURL,
 		ContentURL:  f.ContentURL,
 		VideoURL:    f.VideoURL,

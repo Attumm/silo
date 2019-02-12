@@ -7,6 +7,14 @@ import (
 	"strconv"
 )
 
+
+type Settings struct {
+	CORSSet     bool
+	CORSDomains string
+	Base        string
+	Host        string
+}
+
 func cleanFilename(s string) string {
 	// ord 65 to 90 uppercase alphabet
 	// ord 97 to 122 lowercase alphabet
