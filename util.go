@@ -1,19 +1,12 @@
 package main
+
 // utils
 
 import (
-	"strings"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
-
-type Settings struct {
-	CORSSet		bool
-	CORSDomains	string
-	Base		string
-	Host		string
-	SyncPauze	int
-}
 
 func cleanFilename(s string) string {
 	// ord 65 to 90 uppercase alphabet
@@ -34,7 +27,7 @@ func cleanFilename(s string) string {
 			n = append(n, r)
 		} else if r == 45 || r == 95 {
 			f = false
-			n = append(n, r) 
+			n = append(n, r)
 		} else if r == 46 && !f {
 			f = true
 			n = append(n, r)

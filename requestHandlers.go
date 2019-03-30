@@ -1,19 +1,18 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"html/template"
+	"io"
+	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"html/template"
-	"io"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"log"
 )
-
 
 func ErrorResponse(w http.ResponseWriter, reason string, httpStatus int) {
 	w.Header().Set("Content-Type", "application/json")
@@ -203,7 +202,7 @@ func uploadRest(w http.ResponseWriter, r *http.Request) {
 
 	// TODO add validation on cleaned filename
 	clFilename := cleanFilename(handler.Filename)
-	fp := filepath.Join(SETTINGS.Base, strings.Join(dirs, string(filepath.Separator)), clFilename)
+	fp := filepath.Join(SETTINGS.Get("base"), strings.Join(dirs, string(filepath.Separator)), clFilename)
 	f, err := os.OpenFile(fp, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		ErrorResponse(w, "Unable to store file", http.StatusBadRequest)
@@ -214,7 +213,7 @@ func uploadRest(w http.ResponseWriter, r *http.Request) {
 
 	absPath := f.Name()
 	filename := FilenameFromAbsPath(absPath)
-	rellFullPath := absPath[len(SETTINGS.Base):]
+	rellFullPath := absPath[len(SETTINGS.Get("base")):]
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")

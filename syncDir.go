@@ -34,7 +34,7 @@ func syncFiles(path string) {
 			Cache.Update(items)
 		}
 		fmt.Println("ingestion took:", time.Now().Sub(start))
-		time.Sleep(time.Second * time.Duration(SETTINGS.SyncPauze))
+		time.Sleep(time.Second * time.Duration(SETTINGS.GetInt("sync")))
 	}
 }
 
@@ -53,6 +53,7 @@ func DirWalk(path string, fileChan chan *File, toplevel bool) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	basePath := SETTINGS.Get("base")
 
 	for _, file := range files {
 		// TODO check mod time, to skip unchanged files.
@@ -61,7 +62,7 @@ func DirWalk(path string, fileChan chan *File, toplevel bool) {
 			ModDate: file.ModTime().Unix(),
 			Size:    file.Size(),
 			AbsPath: absPath,
-			RelPath: path[len(SETTINGS.Base):] + string(filepath.Separator),
+			RelPath: path[len(basePath):] + string(filepath.Separator),
 			IsDir:   file.IsDir(),
 		}
 		if file.IsDir() {

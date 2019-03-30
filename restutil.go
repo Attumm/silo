@@ -118,8 +118,9 @@ func sortBy(items []ListFile, attr string) {
 }
 
 func setHeader(w http.ResponseWriter) {
-	if SETTINGS.CORSSet {
-		w.Header().Set("Access-Control-Allow-Origin", SETTINGS.CORSDomains)
+	cors := SETTINGS.Get("cors")
+	if cors == "not-set" {
+		w.Header().Set("Access-Control-Allow-Origin", cors)
 	}
 	w.Header().Set("Last-Update", strconv.Itoa(Cache.LastCycleSec()))
 }

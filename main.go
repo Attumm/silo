@@ -16,42 +16,31 @@ This will prevent many security issues.
 // Maybe ADD META through Shadow files with meta data
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
 )
 
 var Cache = &CacheFiles{Items: make(CacheMap)}
-var SETTINGS = Settings{}
 
 func init() {
-	var base string
-	var host string
-	var corsDomains string
-	var syncPauze int
 
-	flag.StringVar(&base, "base", "/app/files", "set the basedir")
-	flag.StringVar(&host, "host", "0.0.0.0:8000", "enter host with port")
-	flag.StringVar(&corsDomains, "cors", "", "Domains whitelisted under cors")
-	flag.IntVar(&syncPauze, "sync", 1, "Pauze between directory cache syncs, in seconds")
+	SETTINGS.Set("base", "/app/files", "set the basedir")
+	SETTINGS.Set("host", "0.0.0.0:8000", "enter host with port")
+	SETTINGS.Set("cors", "not-set", "Domains whitelisted under cors")
+	SETTINGS.SetInt("sync", 1, "Pauze between directory cache syncs, in seconds")
 
-	flag.Parse()
-
-	SETTINGS.Base = base
-	SETTINGS.Host = host
-	SETTINGS.CORSSet = len(corsDomains) > 1
-	SETTINGS.CORSDomains = corsDomains
-	SETTINGS.SyncPauze = syncPauze
+	SETTINGS.Parse()
 }
 
 func main() {
 
-	fmt.Println("Start server:", SETTINGS.Host)
-	fmt.Println("File path:", SETTINGS.Host)
-	fmt.Println("Sync pauze, seconds:", SETTINGS.SyncPauze)
+	fmt.Println("Start server:", SETTINGS.Get("host"))
+	fmt.Println("File path:", SETTINGS.Get("base"))
 
-	go syncFiles(SETTINGS.Base)
+	fmt.Println("Sync pauze, seconds:", SETTINGS.GetInt("sync"))
+
+	go syncFiles(SETTINGS.Get("base"))
 
 	//Rest Api
 	http.HandleFunc("/list/group/", listGroupedRest)
@@ -73,5 +62,5 @@ func main() {
 	http.HandleFunc("/video/", videoView)
 	http.HandleFunc("/add/", addView)
 
-	log.Fatal(http.ListenAndServe(SETTINGS.Host, nil))
+	log.Fatal(http.ListenAndServe(SETTINGS.Get("host"), nil))
 }

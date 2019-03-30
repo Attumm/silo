@@ -41,7 +41,7 @@ func (c *CacheFiles) Update(newItems CacheMap) {
 	c.Items = newItems
 }
 
-func (c CacheFiles) Length() int {
+func (c *CacheFiles) Length() int {
 	return len(c.Items)
 }
 
