@@ -19,7 +19,7 @@ func syncFiles(path string) {
 
 		updateCache = false
 		for file := range fileChan {
-			filePath := file.rellFullPath()
+			filePath := file.relativePath()
 			cachedFile, found := Cache.Get(filePath)
 			if !found || cachedFile.ModDate != file.ModDate {
 				updateCache = true
@@ -39,6 +39,7 @@ func syncFiles(path string) {
 }
 
 func DirWalk(path string, fileChan chan *File, toplevel bool) {
+
 	var absPath string
 	if filepath.IsAbs(path) {
 		absPath = path

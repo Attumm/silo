@@ -129,6 +129,7 @@ func detailRest(w http.ResponseWriter, r *http.Request) {
 func contentRest(w http.ResponseWriter, r *http.Request) {
 	setHeader(w)
 	filename, err := url.PathUnescape(r.URL.Path[len("/content"):])
+
 	if err != nil {
 		ErrorResponse(w, "Unable to parse URL", http.StatusBadRequest)
 		return
@@ -213,15 +214,15 @@ func uploadRest(w http.ResponseWriter, r *http.Request) {
 
 	absPath := f.Name()
 	filename := FilenameFromAbsPath(absPath)
-	rellFullPath := absPath[len(SETTINGS.Get("base")):]
+	relativePath := absPath[len(SETTINGS.Get("base")):]
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadSuccesResponse{
 		Message:     "Upload succeeded",
 		Filename:    filename,
-		ContentURL:  "/" + "content/" + url.PathEscape(rellFullPath),
-		Directories: removeEmpty(strings.Split(rellFullPath[:len(rellFullPath)-len(filename)], "/")),
+		ContentURL:  "/" + "content/" + url.PathEscape(relativePath),
+		Directories: removeEmpty(strings.Split(relativePath[:len(relativePath)-len(filename)], "/")),
 	})
 }
 

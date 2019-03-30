@@ -110,28 +110,23 @@ func ListFileToGrouped(items []ListFile) *ListFileGrouped {
 
 	dirs := make(map[string]*ListFileGrouped)
 	groupedItems := []*ListFileGrouped{}
-	for i := range items {
-		itemGrouped := items[i].ListFileGrouped()
+	for _, item := range items {
+		itemGrouped := item.ListFileGrouped()
 		groupedItems = append(groupedItems, itemGrouped)
 
 		if itemGrouped.IsDir {
-			tmp := strings.Join(itemGrouped.Directories, "") + itemGrouped.Name
-			topLevel.Grouped = append(topLevel.Grouped, itemGrouped)
-			dirs[tmp] = itemGrouped
+			key := strings.Join(itemGrouped.Directories, "") + itemGrouped.Name
+			dirs[key] = itemGrouped
 		}
 	}
 
-	dirs["<---->"] = topLevel
-
-	for i := range groupedItems {
-		if groupedItems[i].IsDir {
-			continue
+	dirs["root"] = topLevel
+	for _, item := range groupedItems {
+		dirItem := dirs[strings.Join(item.Directories, "")]
+		if dirItem == nil {
+			dirItem = dirs["root"]
 		}
-		a := dirs[strings.Join(groupedItems[i].Directories, "")]
-		if a == nil {
-			a = dirs["<---->"]
-		}
-		a.Grouped = append(a.Grouped, groupedItems[i])
+		dirItem.Grouped = append(dirItem.Grouped, item)
 	}
 	return topLevel
 }
@@ -140,16 +135,16 @@ func (f File) fullPath() string {
 	return filepath.Join(f.AbsPath, f.Name)
 }
 
-func (f File) rellFullPath() string {
+func (f File) relativePath() string {
 	return f.RelPath + f.Name
 }
 
 func (f File) urlEncoded() string {
-	return url.PathEscape(f.rellFullPath())
+	return url.PathEscape(f.relativePath()[1:])
 }
 
 func (f File) urlFor(s string) string {
-	return "/" + s + f.urlEncoded()
+	return "/" + s + "/" + f.urlEncoded()
 }
 
 func (f *File) SetContentType() {
@@ -177,7 +172,7 @@ func (f File) ListFile() ListFile {
 		ContentURL:  f.urlFor("content"),
 		VideoURL:    f.urlFor("video"),
 		ViewURL:     f.urlFor("view"),
-		Directories: removeEmpty(strings.Split(f.RelPath, string(filepath.Separator))),
+		Directories: removeEmpty(strings.Split(f.RelPath, "/")), //string(filepath.Separator))),
 	}
 }
 
