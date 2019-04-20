@@ -8,10 +8,13 @@ import (
 	"strings"
 )
 
+// Remove all chars that are not lower or uppercase alphabet
+// And allow for one dot in succesion.
+// ord 65 to 90 uppercase alphabet
+// ord 97 to 122 lowercase alphabet
+// ord 46 == '.'
 func cleanFilename(s string) string {
-	// ord 65 to 90 uppercase alphabet
-	// ord 97 to 122 lowercase alphabet
-	// ord 46 == '.'
+
 	rr := []rune(s)
 	n := []rune{}
 	f := false
@@ -39,6 +42,7 @@ func cleanFilename(s string) string {
 
 // Util Functions
 
+// Return slice with strings that are not empty
 func removeEmpty(l []string) []string {
 	nonEmpty := []string{}
 	for _, v := range l {
@@ -49,11 +53,14 @@ func removeEmpty(l []string) []string {
 	return nonEmpty
 }
 
+// Remove the path, and return the filename
 func FilenameFromAbsPath(absPath string) string {
 	items := strings.Split(absPath, string(filepath.Separator))
 	return items[len(items)-1]
 }
 
+// Parse int from string
+// if parsed int or error return default value
 func intMoreDefault(s string, defaultN int) int {
 	n, err := strconv.Atoi(s)
 	if err != nil {
