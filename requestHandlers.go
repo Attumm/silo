@@ -114,22 +114,22 @@ func listGroupedRest(w http.ResponseWriter, r *http.Request) {
 
 func detailRest(w http.ResponseWriter, r *http.Request) {
 	filename := r.URL.Path[len("/detail"):]
+
 	w.Header().Set("Content-Type", "application/json")
 	setHeader(w)
-	w.WriteHeader(http.StatusOK)
-	// TODO missing handling of 404
+
 	file, ok := Cache.Get(filename)
 	if !ok {
 		ErrorResponse(w, "File not found", http.StatusNotFound)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(file.ListFile())
 }
 
 func contentRest(w http.ResponseWriter, r *http.Request) {
 	setHeader(w)
 	filename, err := url.PathUnescape(r.URL.Path[len("/content"):])
-
 	if err != nil {
 		ErrorResponse(w, "Unable to parse URL", http.StatusBadRequest)
 		return
