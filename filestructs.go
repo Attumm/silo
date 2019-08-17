@@ -136,11 +136,11 @@ func (f File) fullPath() string {
 }
 
 func (f File) relativePath() string {
-	return f.RelPath + f.Name
+	return filepath.Join(f.RelPath, f.Name)
 }
 
 func (f File) urlEncoded() string {
-	return url.PathEscape(f.relativePath()[1:])
+	return url.PathEscape(f.relativePath())
 }
 
 func (f File) urlFor(s string) string {
