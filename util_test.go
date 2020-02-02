@@ -25,5 +25,25 @@ func TestRemoveEmpty(t *testing.T) {
 			t.Error("testcase", tcNumber, "expected", testcase.expected, "!=", result)
 		}
 	}
+}
 
+func TestStripTrailingSlash(t *testing.T) {
+	testcases := []struct {
+		input    string
+		expected string
+	}{
+		{"", ""},
+		{"/", ""},
+		{"//", "/"},
+		{"a/b/c", "a/b/c"},
+		{"a/b/c/", "a/b/c"},
+		{"/a/b/c", "/a/b/c"},
+	}
+
+	for tcNumber, testcase := range testcases {
+		result := stripTrailingSlash(testcase.input)
+		if result != testcase.expected {
+			t.Error("testcase", tcNumber, "expected", testcase.expected, "!=", result)
+		}
+	}
 }

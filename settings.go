@@ -7,9 +7,11 @@ import (
 )
 
 type Settings struct {
-	msg       map[string]string
-	VarString map[string]string
-	VarInt    map[string]int
+	msg        map[string]string
+	VarString  map[string]string
+	VarInt     map[string]int
+	Parsers    map[string]func(string) string
+	ParsersInt map[string]func(int) int
 }
 
 func (s *Settings) Set(flagName, defaultVar, message string) {
@@ -24,6 +26,18 @@ func (s *Settings) SetString(flagName, defaultVar, message string) {
 func (s *Settings) SetInt(flagName string, defaultVar int, message string) {
 	s.msg[flagName] = message
 	s.VarInt[flagName] = defaultVar
+}
+
+func (s *Settings) SetParsed(flagName, defaultVar, message string, parserFunc func(string) string) {
+	s.msg[flagName] = message
+	s.VarString[flagName] = defaultVar
+	s.Parsers[flagName] = parserFunc
+}
+
+func (s *Settings) SetParsedInt(flagName, defaultVar, message string, parserFunc func(int) int) {
+	s.msg[flagName] = message
+	s.VarString[flagName] = defaultVar
+	s.ParsersInt[flagName] = parserFunc
 }
 
 func (s Settings) Get(flagName string) string {
@@ -48,10 +62,18 @@ func (s *Settings) HandleCMDLineInput() {
 	flag.Parse()
 
 	for key, val := range parsedString {
-		s.VarString[key] = *val
+		if parseFunc, found := s.Parsers[key]; found {
+			s.VarString[key] = parseFunc(*val)
+		} else {
+			s.VarString[key] = *val
+		}
 	}
 	for key, val := range parsedInt {
-		s.VarInt[key] = *val
+		if parseFunc, found := s.ParsersInt[key]; found {
+			s.VarInt[key] = parseFunc(*val)
+		} else {
+			s.VarInt[key] = *val
+		}
 	}
 }
 
@@ -78,7 +100,9 @@ func (s *Settings) Parse() {
 }
 
 var SETTINGS = Settings{
-	msg:       make(map[string]string),
-	VarString: make(map[string]string),
-	VarInt:    make(map[string]int),
+	msg:        make(map[string]string),
+	VarString:  make(map[string]string),
+	VarInt:     make(map[string]int),
+	Parsers:    make(map[string]func(string) string),
+	ParsersInt: make(map[string]func(int) int),
 }

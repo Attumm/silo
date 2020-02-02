@@ -71,3 +71,19 @@ func intMoreDefault(s string, defaultN int) int {
 	}
 	return n
 }
+
+// Parses input for basepath
+func BasePathParser(s string) string {
+	return stripTrailingSlash(s)
+}
+
+// strips Tralling Slash from string
+func stripTrailingSlash(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	if s[len(s)-1] == '/' {
+		return s[:len(s)-1]
+	}
+	return s
+}
