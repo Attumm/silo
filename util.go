@@ -74,6 +74,9 @@ func intMoreDefault(s string, defaultN int) int {
 
 // Parses input for basepath
 func BasePathParser(s string) string {
+	if len(s) == 1 {
+		return s
+	}
 	return stripTrailingSlash(s)
 }
 
