@@ -25,7 +25,7 @@ var Cache = &CacheFiles{Items: make(CacheMap)}
 
 func init() {
 
-	SETTINGS.SetParsed("base", "/app/files", "set the basedir", BasePathParser)
+	SETTINGS.SetParsed("base", "/files", "set the basedir", BasePathParser)
 	SETTINGS.Set("host", "0.0.0.0:8000", "enter host with port")
 	SETTINGS.Set("cors", "not-set", "Domains whitelisted under cors")
 	SETTINGS.SetInt("sync", 600, "Pauze between directory cache syncs, in seconds")

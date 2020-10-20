@@ -1,0 +1,11 @@
+version: '3.6'
+services:
+  silo:
+    build: .
+    image: silo:latest
+    restart: always
+    volumes:
+      - ./files:/files:ro
+    ports:
+      - 8000:8000
+
