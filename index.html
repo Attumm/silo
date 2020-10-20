@@ -338,7 +338,10 @@
     },
 
     beforeMount() {
-      axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.items = res.data["Grouped"])
+      axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => {
+        this.items = res.data["Grouped"];
+        this.get_detail({"target": {"dataset": {"detailurl": window.location.hash.substr(1)}}}).then(() => {this.setOpen()})
+      })
       axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.lastUpdated = res.headers['Last-Update'])
     },
   
@@ -350,7 +353,8 @@
   
     methods: {
       get_detail: function (event, value) {
-        axios.get(this.apiHost + event.target.dataset.detailurl).then(res => (
+        window.location = '#' + event.target.dataset.detailurl;
+        return axios.get(this.apiHost + event.target.dataset.detailurl).then(res => (
           this.createDetailItem(res.data))).catch((err) => {
             console.log(err)
           })
@@ -375,7 +379,6 @@
       },
       setOpen: function() {
         this.activeDetail = this.detail
-        window.location = '#' + this.activeDetail.Directories.join("/") + "/" + this.activeDetail.Name
         if (this.activeDetail.type == 'video') {
           this.activeVideo = this.activeDetail.apiContentURL
         }
