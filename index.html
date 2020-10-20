@@ -375,6 +375,7 @@
       },
       setOpen: function() {
         this.activeDetail = this.detail
+        window.location = '#' + this.activeDetail.Directories.join("/") + "/" + this.activeDetail.Name
         if (this.activeDetail.type == 'video') {
           this.activeVideo = this.activeDetail.apiContentURL
         }
