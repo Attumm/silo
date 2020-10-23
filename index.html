@@ -132,17 +132,6 @@
                   <div>
                       <tree v-for="item in items" :tree-data="item" @get_detail="get_detail" ></tree>
                   </div>
-                <!-- <ul v-on:click="get_detail">
-                  <li
-                  v-for="item in items"
-                  v-bind:item="item"
-                  v-bind:index="item.id"
-                  :data-detailurl="item.DetailURL"
-                  v-bind:key="item.Directories.join(',') + item.Name" 
-                  >
-                  {{ truncate(item.Name) }}
-                  </li>
-                </ul> -->
               </div>
             <div class="item box5">
               <div v-if="this.detail.hasOwnProperty('Name')">
