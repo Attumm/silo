@@ -332,7 +332,7 @@
     },
 
     beforeMount() {
-      axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => {this.items = res.data; console.log(this.items)})
+      axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.items = res.data)
       axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.lastUpdated = res.header['Last-Update'])
     },
   
