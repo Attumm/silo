@@ -124,7 +124,7 @@
               </div>
               <div class="item box4">
                   <div>
-                      <tree :tree-data="items" @get_detail="get_detail" ></tree>
+                      <tree v-for="item in items" :tree-data="item" @get_detail="get_detail" ></tree>
                   </div>
                 <!-- <ul v-on:click="get_detail">
                   <li
@@ -332,7 +332,7 @@
     },
 
     beforeMount() {
-      axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.items = res.data)
+      axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.items = res.data["Grouped"])
       axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.lastUpdated = res.header['Last-Update'])
     },
   
