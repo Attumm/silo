@@ -10,10 +10,16 @@
               
         <title>vue silo</title>
         <style>
-.tree-list ul {
-  padding-left: 16px;
-  margin: 6px 0;
-}
+          .tree-list {
+            padding-left: 1rem;
+            margin: 0.3rem 0 0.5rem 0;
+            list-style: none;
+          }
+          .tree-list ul {
+            padding-left: 1rem;
+            margin: 0.3rem 0 0.5rem 0;
+            list-style: none;
+          }
           body {
           }
           .grid {
@@ -235,7 +241,7 @@
       },
       template: `
         <li class="node-tree">
-          <span :data-detailurl="node.DetailURL" v-on:click="get_detail" class="label">{{ node.Name }}</span>
+          <span :data-detailurl="node.DetailURL" v-on:click="get_detail" class="label">{{ node.Name }}<span v-if=node.IsDir >/</span></span>
 
           <ul v-if="node.Grouped && node.Grouped.length">
             <node v-for="child in node.Grouped" :node="child" @get_detail="get_detail" ></node>
