@@ -333,7 +333,7 @@
 
     beforeMount() {
       axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.items = res.data["Grouped"])
-      axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.lastUpdated = res.header['Last-Update'])
+      axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.lastUpdated = res.headers['Last-Update'])
     },
   
     computed: {
@@ -443,7 +443,7 @@
       checkCycle: function() {
       // TODO should only check after item has been deleted
       lastUpdated = ''
-      axios.get(this.apiHost + '/cycle/').then((res) => lastUpdated = res.header['Last-Update']).bind(this)
+      axios.get(this.apiHost + '/cycle/').then((res) => lastUpdated = res.headers['Last-Update']).bind(this)
         console.log(lastUpdated)
         if (!this.searchInProgress) {
           if (lastUpdated != this.lastUpdated) {
