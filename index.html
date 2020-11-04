@@ -323,12 +323,14 @@
         this.apiHost = location.origin
       }
       console.log(this.apiHost)
-      setInterval( this.checkCycle, 1000).bind(this)
+      setInterval( this.checkCycle.bind(this), 5000)
     },
 
     beforeMount() {
-      axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.items = res.data["Grouped"])
-      axios.get(this.apiHost + '/list/group/?orderby=name').then((res) => this.lastUpdated = res.headers['Last-Update'])
+      axios.get(this.apiHost + '/list/group/?orderby=name').then(((res) => this.items = res.data["Grouped"]).bind(this))
+        .catch((err) => {console.warn(err)})
+      axios.get(this.apiHost + '/list/group/?orderby=name').then(((res) => this.lastUpdated = res.headers['Last-Update']).bind(this))
+        .catch((err) => {console.warn(err)})
     },
   
     computed: {
@@ -369,6 +371,7 @@
         }
         if (this.activeDetail.type === 'raw' || this.activeDetail.type === 'txt') {
           axios.get(this.activeDetail['apiContentURL']).then(res => this.content = res.data )
+            .catch((err) => {console.warn(err)})
         }
         this.show  = false
         this.$nextTick(() => {
@@ -426,7 +429,8 @@
         if (!this.searchInProgress) {
           this.searchInProgress = true
           setTimeout(() => {
-            axios.get(this.apiHost + '/list/group/?filter='+this.searchTerm).then(res => this.items = res.data)
+            axios.get(this.apiHost + '/list/?filter='+this.searchTerm).then(res => this.items = res.data)
+              .catch((err) => {console.warn(err)})
             this.searchInProgress = false
           }, 500);
         }
@@ -438,17 +442,21 @@
       checkCycle: function() {
       // TODO should only check after item has been deleted
       lastUpdated = ''
-      axios.get(this.apiHost + '/cycle/').then((res) => lastUpdated = res.headers['Last-Update']).bind(this)
-        console.log(lastUpdated)
-        if (!this.searchInProgress) {
-          if (lastUpdated != this.lastUpdated) {
-            if (this.searchTerm.length > 1) {
-              axios.get(this.apiHost + '/list/group/?filter='+this.searchTerm).then(res => this.items = res.data).bind(this)
-            } else {
-              axios.get(this.apiHost + '/list/group/').then(res => this.items = res.data).bind(this)
-            }
+      axios.get(this.apiHost + '/cycle/').then(((res) => lastUpdated = res.headers['Last-Update']).bind(this))
+          .catch((err) => {console.warn(err)})
+
+
+      if (!this.searchInProgress) {
+        if (lastUpdated != this.lastUpdated) {
+          if (this.searchTerm.length > 1) {
+            axios.get(this.apiHost + '/list/group/?filter='+this.searchTerm).then((res => this.items = res.data["Grouped"]).bind(this))
+              .catch((err) => {console.warn(err)})
+          } else {
+            axios.get(this.apiHost + '/list/group/?orderby=name').then((res => this.items = res.data["Grouped"]).bind(this))
+              .catch((err) => {console.warn(err)})
           }
         }
+      }
       }
     },
   
