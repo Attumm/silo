@@ -10,6 +10,16 @@
               
         <title>vue silo</title>
         <style>
+          .tree-list {
+            padding-left: 1rem;
+            margin: 0.3rem 0 0.5rem 0;
+            list-style: none;
+          }
+          .tree-list ul {
+            padding-left: 1rem;
+            margin: 0.3rem 0 0.5rem 0;
+            list-style: none;
+          }
           body {
           }
           .grid {
@@ -119,17 +129,9 @@
                 content {{ this.show }}
               </div>
               <div class="item box4">
-                <ul v-on:click="get_detail">
-                  <li
-                  v-for="item in items"
-                  v-bind:item="item"
-                  v-bind:index="item.id"
-                  :data-detailurl="item.DetailURL"
-                  v-bind:key="item.Directories.join(',') + item.Name" 
-                  >
-                  {{ truncate(item.Name) }}
-                  </li>
-                </ul>
+                  <div>
+                      <tree v-for="item in items" :tree-data="item" @get_detail="get_detail" ></tree>
+                  </div>
               </div>
             <div class="item box5">
               <div v-if="this.detail.hasOwnProperty('Name')">
@@ -216,6 +218,50 @@
     <script>
 
 
+    const NodeTree = Vue.component('node-tree', {
+      name: "node",
+      props: {
+        node: Object
+      },
+      methods: {
+        get_detail(event) {
+          this.$emit('get_detail', event)
+        }
+      },
+      template: `
+        <li class="node-tree">
+          <span :data-detailurl="node.DetailURL" v-on:click="get_detail" class="label">{{ node.Name }}<span v-if=node.IsDir >/</span></span>
+
+          <ul v-if="node.Grouped && node.Grouped.length">
+            <node v-for="child in node.Grouped" :node="child" @get_detail="get_detail" ></node>
+          </ul>
+        </li>
+      `
+    });
+
+    const Tree = Vue.component('tree', {
+      props: {
+        treeData: Object
+      },
+      methods: {
+        get_detail(event, value) {
+          this.$emit('get_detail', event)
+        }
+      },
+      components: {
+        NodeTree
+      },
+      template: `
+      <div class="tree">
+        <ul class="tree-list">
+          <node-tree :node="treeData" @get_detail="get_detail"></node-tree>
+        </ul>
+      </div>
+      `
+    });
+
+
+
   var app = new Vue({
     el: '#container',
     data () {
@@ -227,6 +273,9 @@
         activeDetail: {},
         activeVideo: '',
         content: '',
+        components: {
+          Tree
+        },
         contenturl: '',
 
         videoOn: false,
@@ -274,12 +323,14 @@
         this.apiHost = location.origin
       }
       console.log(this.apiHost)
-      setInterval( this.checkCycle, 1000).bind(this)
+      setInterval( this.checkCycle.bind(this), 5000)
     },
 
     beforeMount() {
-      axios.get(this.apiHost + '/list/?orderby=name').then((res) => this.items = res.data)
-      axios.get(this.apiHost + '/list/?orderby=name').then((res) => this.lastUpdated = res.header['Last-Update'])
+      axios.get(this.apiHost + '/list/group/?orderby=name').then(((res) => this.items = res.data["Grouped"]).bind(this))
+        .catch((err) => {console.warn(err)})
+      axios.get(this.apiHost + '/list/group/?orderby=name').then(((res) => this.lastUpdated = res.headers['Last-Update']).bind(this))
+        .catch((err) => {console.warn(err)})
     },
   
     computed: {
@@ -289,7 +340,7 @@
     },
   
     methods: {
-      get_detail: function (event) {
+      get_detail: function (event, value) {
         axios.get(this.apiHost + event.target.dataset.detailurl).then(res => (
           this.createDetailItem(res.data))).catch((err) => {
             console.log(err)
@@ -320,6 +371,7 @@
         }
         if (this.activeDetail.type === 'raw' || this.activeDetail.type === 'txt') {
           axios.get(this.activeDetail['apiContentURL']).then(res => this.content = res.data )
+            .catch((err) => {console.warn(err)})
         }
         this.show  = false
         this.$nextTick(() => {
@@ -378,6 +430,7 @@
           this.searchInProgress = true
           setTimeout(() => {
             axios.get(this.apiHost + '/list/?filter='+this.searchTerm).then(res => this.items = res.data)
+              .catch((err) => {console.warn(err)})
             this.searchInProgress = false
           }, 500);
         }
@@ -389,17 +442,21 @@
       checkCycle: function() {
       // TODO should only check after item has been deleted
       lastUpdated = ''
-      axios.get(this.apiHost + '/cycle/').then((res) => lastUpdated = res.header['Last-Update']).bind(this)
-        console.log(lastUpdated)
-        if (!this.searchInProgress) {
-          if (lastUpdated != this.lastUpdated) {
-            if (this.searchTerm.length > 1) {
-              axios.get(this.apiHost + '/list/?filter='+this.searchTerm).then(res => this.items = res.data).bind(this)
-            } else {
-              axios.get(this.apiHost + '/list/').then(res => this.items = res.data).bind(this)
-            }
+      axios.get(this.apiHost + '/cycle/').then(((res) => lastUpdated = res.headers['Last-Update']).bind(this))
+          .catch((err) => {console.warn(err)})
+
+
+      if (!this.searchInProgress) {
+        if (lastUpdated != this.lastUpdated) {
+          if (this.searchTerm.length > 1) {
+            axios.get(this.apiHost + '/list/group/?filter='+this.searchTerm).then((res => this.items = res.data["Grouped"]).bind(this))
+              .catch((err) => {console.warn(err)})
+          } else {
+            axios.get(this.apiHost + '/list/group/?orderby=name').then((res => this.items = res.data["Grouped"]).bind(this))
+              .catch((err) => {console.warn(err)})
           }
         }
+      }
       }
     },
   
